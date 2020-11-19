@@ -1,61 +1,71 @@
 #run these commands in cmd without hash_tag(#)
-
-#pip install scipy
 #pip install matplotlib
-#pip install ipython
 
-%matplotlib inline
-
-from ipywidgets import interact, interactive
-from IPython.display import clear_output, display, HTML
-
+import sys
+import argparse
 import numpy as np
-from scipy import integrate
-
-from matplotlib import pyplot as plt
+from matplotlib.pyplot import *
+import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.colors import cnames
-from matplotlib import animation
 
+# lorenz attractor - example of simple dynamical system governed by three simple
+# differential equations: http://mathworld.wolfram.com/LorenzAttractor.html
+#  http://en.wikipedia.org/wiki/Lorenz_attractor
 
-def solve_lorenz(N=10, angle=0.0, max_time=4.0, sigma=10.0, beta=8./3, rho=28.0):
+def lorenz_attractor():
+
+    steps = 10000
+    dt = 0.01
+    opfile = 'lorenz_map1.png'
+    sigma = 10
+    rho = 28
+    beta = 8.0/3 
+
+    if options.rho:
+        rho = options.rho
+    if options.sigma:
+        sigma = options.sigma
+    if options.beta:
+        beta = options.beta
+                        
+    xs = np.empty((steps + 1,))
+    ys = np.empty((steps + 1,))
+    zs = np.empty((steps + 1,))
+    xs[0], ys[0], zs[0] = (0., 1., 1.05)
+
+    # loop over steps in increments of dt
+    for i in np.arange(steps):
+        xdot, ydot, zdot = lorenz(xs[i], ys[i], zs[i], rho, beta, sigma)
+        xs[i+1] = xs[i] + (xdot * dt)
+        ys[i+1] = ys[i] + (ydot * dt)
+        zs[i+1] = zs[i] + (zdot * dt)              
 
     fig = plt.figure()
-    ax = fig.add_axes([0, 0, 1, 1], projection='3d')
-    ax.axis('off')
+    ax = Axes3D(fig)
+    ax.set_xlabel('X axis')
+    ax.set_ylabel('Y axis')
+    ax.set_zlabel('Z axis')
+    ax.plot(xs, ys, zs, label="lorenz")
+    ax.legend()
+    if options.f:
+        plt.savefig(options.f)
+    else:
+        plt.show()
 
-    # prepare the axes limits
-    ax.set_xlim((-25, 25))
-    ax.set_ylim((-35, 35))
-    ax.set_zlim((5, 55))
+def lorenz(x, y, z, r, b, s):
+    xdot = s*(y - x)
+    ydot = r*x - y - x*z
+    zdot = x*y - b*z
+    return xdot, ydot, zdot
 
-    def lorenz_deriv(x_y_z, t0, sigma=sigma, beta=beta, rho=rho):
-        """Compute the time-derivative of a Lorenz system."""
-        x, y, z = x_y_z
-        return [sigma * (y - x), x * (rho - z) - y, x * y - beta * z]
+def main():
+    lorenz_attractor()
 
-    # Choose random starting points, uniformly distributed from -15 to 15
-    np.random.seed(1)
-    x0 = -15 + 30 * np.random.random((N, 3))
-
-    # Solve for the trajectories
-    t = np.linspace(0, max_time, int(250*max_time))
-    x_t = np.asarray([integrate.odeint(lorenz_deriv, x0i, t)
-                      for x0i in x0])
-
-    # choose a different color for each trajectory
-    colors = plt.cm.viridis(np.linspace(0, 1, N))
-
-    for i in range(N):
-        x, y, z = x_t[i,:,:].T
-        lines = ax.plot(x, y, z, '-', c=colors[i])
-        plt.setp(lines, linewidth=2)
-
-    ax.view_init(30, angle)
-    plt.show()
-
-    return t, x_t
-
-w = interactive(solve_lorenz, angle=(0.,360.), max_time=(0.1, 4.0),
-                N=(0,50), sigma=(0.0,50.0), rho=(0.0,50.0))
-display(w)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-rho", type=float, help="r value")
+    parser.add_argument("-sigma", type=float, help="sigma value")
+    parser.add_argument("-beta", type=float, help="beta value")
+    parser.add_argument("-f", help="o/p png file", metavar="FILE")
+    options = parser.parse_args()
+    main()
